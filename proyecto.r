@@ -4,6 +4,8 @@ library(raster)
 library(tidyverse)
 library(tmap)
 library(RColorBrewer)
+library(lmtest)
+library(spdep)
 
 #carga de capas y transformación
 incendios <- st_read(dsn = "data/Incendios/FiredataBuffer.shp")
@@ -73,8 +75,23 @@ munInc.w.B
 
 #Correlacion Incendios
 sum(munInc$NumIncendios)
-munIncPerc <- munInc %>% mutate('IncPercentage' = munInc$NumIncendios/sum(munInc$NumIncendios)*100,
-         'IncPercentage_log' = log1p(munInc$NumIncendios/sum(munInc$NumIncendios)*100))
+#munIncPerc <- munInc %>% st_centroid() %>% mutate('IncPercentage' = munInc$NumIncendios/sum(munInc$NumIncendios)*100,
+ #        'IncPercentage_log' = log1p(munInc$NumIncendios/sum(munInc$NumIncendios)*100),x=unlist(map(geom,1)),
+  #       y=unlist(map(geom,2)))
+munIncPerc <- munInc %>% st_centroid() %>%  mutate('IncPercentage' = munInc$NumIncendios/sum(munInc$NumIncendios)*100,
+                    'IncPercentage_log' = log1p(munInc$NumIncendios/sum(munInc$NumIncendios)*100),
+                    x=unlist(map(geom,1)), y=unlist(map(geom,2)))%>% 
+                      st_drop_geometry()
+
+##############problema join
+munIncPercPol <- munInc %>%
+  inner_join(munIncPerc, by = 'ENLACE') %>% 
+  dplyr::select(ENLACE, x,y, TOPONIMIA)
+
+class(munIncPe)
+colnames(munIncPerc)
+plot(munIncPercPol['TOPONIMIA'])
+
 
 #Mapa Porcentajes
 p1 <- tm_shape(munIncPerc) +
@@ -86,7 +103,38 @@ p2 <- tm_shape(munIncPerc) +
   tm_fill(col = "IncPercentage_log", style = 'jenks',
           palette = brewer.pal(9, name = 'Reds'), midpoint = NA, title = 'Porcentaje Incendios') +
   tm_borders(lwd = 0.5)
-tmap_arrange(p1)
+tmap_arrange(p1,p2)
 plot(munIncPerc['IncPercentage'])
 
+#qq 
+qqnorm(munIncPerc$IncPercentage)
+shapiro.test(munIncPerc$IncPercentage)
 
+qqnorm(munIncPerc$IncPercentage_log)
+shapiro.test(munIncPerc$IncPercentage_log)
+
+munIncPerc %>% lm(IncPercentage ~ x, .) %>% bptest()
+munIncPerc %>% lm(IncPercentage ~ y, .) %>% bptest()
+munIncPerc %>% lm(IncPercentage_log ~ x, .) %>% bptest()
+munIncPerc %>% lm(IncPercentage_log ~ y, .) %>% bptest()
+
+
+
+match(attr(munInc.w.W$neighbours, "region.id"), munIncPerc$TOPONIMIA)==1:155
+
+(gmoranw <- moran.test(x = munIncPerc$'IncPercentage_log', listw = munInc.w.W ))
+(gmoranb <- moran.test(x = munIncPerc$'IncPercentage_log', listw = munInc.w.B))
+
+moran.plot(x = munIncPerc$IncPercentage_log, listw = munInc.w.W)
+
+
+source('lisaclusters.R')
+lisamap(objesp = munIncPerc,
+        var = 'IncPercentage_log',
+        pesos = munInc.w.W,
+        tituloleyenda = 'Significancia\n("x-y", léase\ncomo "x"\nrodeado de "y"',
+        leyenda = T,
+        anchuratitulo = 1000,
+        tamanotitulo = 16,
+        fuentedatos = '',
+        titulomapa = paste0('Clusters LISA de Porcentaje de Incendios Forestales'))
