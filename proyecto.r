@@ -11,17 +11,14 @@ library(spdep)
 incendios <- st_read(dsn = "data/Incendios/FiredataBuffer.shp")
 mun <- st_read(dsn = 'data/DivisionRD/divisionRD.gpkg', layer = 'MUNCENSO2010')
 mun4326 <- st_transform(mun, crs = 4326)
-prov <- st_read(dsn = 'data/DivisionRD/divisionRD.gpkg', layer = 'PROVCENSO2010')
-prov4326 <- st_transform(prov, crs = 4326)
 usoSuelo <- raster('data/UsoSuelo/GLOBCOVER_RD.color.tif')
 
 #extracción de datos raster
 incUsoSuelo <- raster::extract(usoSuelo, incendios,sp=TRUE)
-incForestales <- subset(incUsoSuelo,incUsoSuelo$GLOBCOVER_RD.color>10 & incUsoSuelo$GLOBCOVER_RD.color<130)
-incForestales$GLOBCOVER_RD.color
+incForestales <- subset(incUsoSuelo,incUsoSuelo$GLOBCOVER_RD.color>20 & incUsoSuelo$GLOBCOVER_RD.color<130)
+summary(incForestales.df[[18]])
 incForestales.df <- data.frame(incForestales)
 colnames(incForestales.df)
-summary(incForestales.df[[18]])
 
 #
 incForestales.sf <- st_as_sf(incForestales)
@@ -74,24 +71,18 @@ munInc.w.B
 
 
 #Correlacion Incendios
-sum(munInc$NumIncendios)
-#munIncPerc <- munInc %>% st_centroid() %>% mutate('IncPercentage' = munInc$NumIncendios/sum(munInc$NumIncendios)*100,
- #        'IncPercentage_log' = log1p(munInc$NumIncendios/sum(munInc$NumIncendios)*100),x=unlist(map(geom,1)),
-  #       y=unlist(map(geom,2)))
-munIncPerc <- munInc %>% st_centroid() %>%  mutate('IncPercentage' = munInc$NumIncendios/sum(munInc$NumIncendios)*100,
-                    'IncPercentage_log' = log1p(munInc$NumIncendios/sum(munInc$NumIncendios)*100),
-                    x=unlist(map(geom,1)), y=unlist(map(geom,2)))%>% 
-                      st_drop_geometry()
+munIncPerc <- munInc %>%st_centroid() %>%  mutate( 
+          'IncPercentage' = munInc$NumIncendios/sum(munInc$NumIncendios)*100,
+          'IncPercentage_log' = log1p(munInc$NumIncendios/sum(munInc$NumIncendios)*100),
+          'AreaKm2' = st_area(munInc),
+          'IncXArea' = (munInc$NumIncendios/AreaKm2),
+          'IncXArea_log' = log1p(munInc$NumIncendios/AreaKm2),
+          x=unlist(map(geom,1)), y=unlist(map(geom,2)))  %>% 
+        st_drop_geometry()
 
-##############problema join
+#Join 
 munIncPercPol <- munInc %>%
-  inner_join(munIncPerc, by = 'ENLACE') %>% 
-  dplyr::select(ENLACE, x,y, TOPONIMIA)
-
-class(munIncPe)
-colnames(munIncPerc)
-plot(munIncPercPol['TOPONIMIA'])
-
+  merge(munIncPerc, all.y=TRUE)
 
 #Mapa Porcentajes
 p1 <- tm_shape(munIncPerc) +
@@ -103,8 +94,19 @@ p2 <- tm_shape(munIncPerc) +
   tm_fill(col = "IncPercentage_log", style = 'jenks',
           palette = brewer.pal(9, name = 'Reds'), midpoint = NA, title = 'Porcentaje Incendios') +
   tm_borders(lwd = 0.5)
+
 tmap_arrange(p1,p2)
-plot(munIncPerc['IncPercentage'])
+
+p3 <- tm_shape(munIncPerc) +
+  tm_fill(col = "IncXArea", style = 'jenks',
+          palette = brewer.pal(9, name = 'Reds'), title = 'Porcentaje Incendios por Km2') +
+  tm_borders(lwd = 0.5)
+p4 <- tm_shape(munIncPerc) +
+  tm_fill(col = "IncXArea_log", style = 'jenks',
+          palette = brewer.pal(9, name = 'Reds'), title = 'Porcentaje Incendios por Km2') +
+  tm_borders(lwd = 0.5)
+
+tmap_arrange(p3,p4)
 
 #qq 
 qqnorm(munIncPerc$IncPercentage)
@@ -129,7 +131,7 @@ moran.plot(x = munIncPerc$IncPercentage_log, listw = munInc.w.W)
 
 
 source('lisaclusters.R')
-lisamap(objesp = munIncPerc,
+lisamap(objesp = munIncPercPol,
         var = 'IncPercentage_log',
         pesos = munInc.w.W,
         tituloleyenda = 'Significancia\n("x-y", léase\ncomo "x"\nrodeado de "y"',
