@@ -74,7 +74,7 @@ munInc.w.B
 munIncPerc <- munInc %>%st_centroid() %>%  mutate( 
   'IncPercentage' = munInc$NumIncendios/sum(munInc$NumIncendios)*100,
   'IncPercentage_log' = log1p(munInc$NumIncendios/sum(munInc$NumIncendios)*100),
-  'AreaKm2' = as.numeric((st_area(munInc)/1000)),
+  'AreaKm2' = as.numeric((st_area(munInc)/1000000)),
   'IncXArea' = (munInc$NumIncendios/AreaKm2),
   'IncXArea_log' = log1p(munInc$NumIncendios/AreaKm2),
   x=unlist(map(geom,1)), y=unlist(map(geom,2)))  %>% 
