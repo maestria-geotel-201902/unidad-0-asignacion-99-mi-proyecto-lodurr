@@ -16,8 +16,8 @@ usoSuelo <- raster('data/UsoSuelo/GLOBCOVER_RD.color.tif')
 #extracción de datos raster
 incUsoSuelo <- raster::extract(usoSuelo, incendios,sp=TRUE)
 incForestales <- subset(incUsoSuelo,incUsoSuelo$GLOBCOVER_RD.color>20 & incUsoSuelo$GLOBCOVER_RD.color<130)
-summary(incForestales.df[[18]])
 incForestales.df <- data.frame(incForestales)
+summary(incForestales.df[[18]])
 colnames(incForestales.df)
 
 #
@@ -83,25 +83,26 @@ munIncPerc <- munInc %>%st_centroid() %>%  mutate(
 #Join 
 munIncPercPol <- munInc %>%
   merge(munIncPerc, all.y=TRUE)
+plot(munIncPercPol['ENLACE'])
 
 #Mapa Porcentajes
-p1 <- tm_shape(munIncPerc) +
+p1 <- tm_shape(munIncPercPol) +
   tm_fill(col = "IncPercentage", style = 'jenks',
           palette = brewer.pal(9, name = 'Reds'), title = 'Porcentaje Incendios') +
   tm_borders(lwd = 0.5)
 
-p2 <- tm_shape(munIncPerc) +
+p2 <- tm_shape(munIncPercPol) +
   tm_fill(col = "IncPercentage_log", style = 'jenks',
           palette = brewer.pal(9, name = 'Reds'), midpoint = NA, title = 'Porcentaje Incendios') +
   tm_borders(lwd = 0.5)
 
 tmap_arrange(p1,p2)
 
-p3 <- tm_shape(munIncPerc) +
+p3 <- tm_shape(munIncPercPol) +
   tm_fill(col = "IncXArea", style = 'jenks',
           palette = brewer.pal(9, name = 'Reds'), title = 'Porcentaje Incendios por Km2') +
   tm_borders(lwd = 0.5)
-p4 <- tm_shape(munIncPerc) +
+p4 <- tm_shape(munIncPercPol) +
   tm_fill(col = "IncXArea_log", style = 'jenks',
           palette = brewer.pal(9, name = 'Reds'), title = 'Porcentaje Incendios por Km2') +
   tm_borders(lwd = 0.5)
