@@ -10,7 +10,7 @@ library(parallel)
 library(ggplot2)
 library(gstat)
 library(stars)
-
+source('lisaclusters.R')
 
 #carga de capas y transformación
 incendios <- st_read(dsn = "data/Incendios/FiredataBuffer.shp")
@@ -20,18 +20,19 @@ usoSuelo <- raster('data/UsoSuelo/GLOBCOVER_RD.color.tif')
 
 #extracción de datos raster
 incUsoSuelo <- raster::extract(usoSuelo, incendios,sp=TRUE)
-incForestales <- subset(incUsoSuelo,incUsoSuelo$GLOBCOVER_RD.color>20 & incUsoSuelo$GLOBCOVER_RD.color<130)
+incForestales <- subset(incUsoSuelo,incUsoSuelo$GLOBCOVER_RD.color>20
+                        & incUsoSuelo$GLOBCOVER_RD.color<130)
 incForestales.df <- data.frame(incForestales)
 summary(incForestales.df[[18]])
-colnames(incForestales.df)
 
 #Adición de la cobertura 
 incForestales.sf <- st_as_sf(incForestales)
 incendiosForestales <- st_intersection(incForestales.sf,mun4326)
 plot(incendiosForestales['GLOBCOVER_RD.color'])
-table(incendiosForestales$ENLACE)
+
 
 #Conversion a Poligono
+table(incendiosForestales$ENLACE)
 munInc <-arrange(mun4326, ENLACE)
 munInc$NumIncendios <- c(table(incendiosForestales$ENLACE))
 plot(munInc['NumIncendios'])
@@ -79,13 +80,17 @@ munInc.w.B
 munIncPercGeom <- munInc %>%st_centroid() %>%  mutate( 
   'IncPercentage' = munInc$NumIncendios/sum(munInc$NumIncendios)*100,
   'IncPercentage_log' = log1p(munInc$NumIncendios/sum(munInc$NumIncendios)*100),
-  'IncPercentage_tukey' = rcompanion::transformTukey(NumIncendios/sum(munInc$NumIncendios)*100, plotit = F),
-  'IncPercentage_tukey_lambda' = rcompanion::transformTukey(NumIncendios/sum(munInc$NumIncendios)*100, returnLambda = T),
+  'IncPercentage_tukey' = rcompanion::transformTukey(
+                NumIncendios/sum(munInc$NumIncendios)*100, plotit = F),
+  'IncPercentage_tukey_lambda' = rcompanion::transformTukey(
+                NumIncendios/sum(munInc$NumIncendios)*100, returnLambda = T),
   'AreaKm2' = as.numeric((st_area(munInc)/1000000)),
   'IncXArea' = (munInc$NumIncendios/AreaKm2),
   'IncXArea_log' = log1p(munInc$NumIncendios/AreaKm2),
-  'IncXArea_tukey' = rcompanion::transformTukey(NumIncendios/AreaKm2, plotit = F),
-  'IncXArea_tukey_lambda' = rcompanion::transformTukey(NumIncendios/AreaKm2, returnLambda = T),
+  'IncXArea_tukey' = rcompanion::transformTukey(NumIncendios/
+                                                  AreaKm2, plotit = F),
+  'IncXArea_tukey_lambda' = rcompanion::transformTukey(
+                                NumIncendios/AreaKm2, returnLambda = T),
   x=unlist(map(geom,1)), y=unlist(map(geom,2))) 
 
 munIncPerc <-  munIncPercGeom %>%st_drop_geometry() 
@@ -93,18 +98,20 @@ munIncPerc <-  munIncPercGeom %>%st_drop_geometry()
 #Join 
 munIncPercPol <- munInc %>%
   merge(munIncPerc, all.y=TRUE)
-plot(munIncPercPol['ENLACE'])
 
 #Mapa Porcentajes
 p1 <- tm_shape(munIncPercPol) +
   tm_fill(col = "IncPercentage", style = 'jenks',
-          palette = brewer.pal(9, name = 'Reds'), title = 'Porcentaje Incendios') +
-  tm_borders(lwd = 0.5)
+          palette = brewer.pal(9, name = 'Reds'),
+          title = 'Porcentaje Incendios') +
+          tm_borders(lwd = 0.5)
 
 p2 <- tm_shape(munIncPercPol) +
   tm_fill(col = "IncPercentage_log", style = 'jenks',
-          palette = brewer.pal(9, name = 'Reds'), midpoint = NA, title = 'Porcentaje Incendios') +
-  tm_borders(lwd = 0.5)
+          palette = brewer.pal(9, name = 'Reds'),
+          midpoint = NA, 
+          title = 'Porcentaje Incendios') +
+          tm_borders(lwd = 0.5)
 
 tmap_arrange(p1,p2)
 
@@ -128,46 +135,34 @@ munIncPerc %>% lm(IncPercentage_tukey ~ y, .) %>% bptest()
 
 match(attr(munInc.w.W$neighbours, "region.id"), munIncPerc$TOPONIMIA)==1:155
 
-(gmoranw <- moran.test(x = munIncPerc$'IncPercentage_log', listw = munInc.w.W ))
-(gmoranb <- moran.test(x = munIncPerc$'IncPercentage_log', listw = munInc.w.B))
-
 (gmoranw <- moran.test(x = munIncPerc$IncXArea_tukey, listw = munInc.w.W ))
 (gmoranb <- moran.test(x = munIncPerc$IncXArea_tukey, listw = munInc.w.B))
 
-moran.plot(x = munIncPerc$IncPercentage_log, listw = munInc.w.W)
 moran.plot(x = munIncPerc$IncPercentage_tukey, listw = munInc.w.W)
-
-
-source('lisaclusters.R')
-lisamap(objesp = munIncPercPol,
-        var = 'IncPercentage_log',
-        pesos = munInc.w.W,
-        tituloleyenda = 'Significancia\n("x-y", léase\ncomo "x"\nrodeado de "y"',
-        leyenda = T,
-        anchuratitulo = 1000,
-        tamanotitulo = 16,
-        fuentedatos = '',
-        titulomapa = paste0('Clusters LISA de Porcentaje de Incendios Forestales'))
 
 lisamap(objesp = munIncPercPol,
         var = 'IncPercentage_tukey',
         pesos = munInc.w.W,
-        tituloleyenda = 'Significancia\n("x-y", léase\ncomo "x"\nrodeado de "y"',
+        tituloleyenda = 'Significancia\n(
+                        "x-y",léase\ncomo "x"\nrodeado de "y"',
         leyenda = T,
         anchuratitulo = 1000,
         tamanotitulo = 16,
         fuentedatos = '',
-        titulomapa = paste0('Clusters LISA de Porcentaje de Incendios Forestales (Tukey Trans.)'))
+        titulomapa = paste0('Clusters LISA de Porcentaje 
+                            de Incendios Forestales (Tukey Trans.)'))
 
 # Mapa Porcentaje por Km2
 p3 <- tm_shape(munIncPercPol) +
-  tm_fill(col = "IncXArea", style = 'jenks',
-          palette = brewer.pal(9, name = 'Reds'), title = 'Porcentaje Incendios por Km2') +
-  tm_borders(lwd = 0.5)
+          tm_fill(col = "IncXArea", style = 'jenks',
+          palette = brewer.pal(9, name = 'Reds'), 
+          title = 'Porcentaje Incendios por Km2') +
+          tm_borders(lwd = 0.5)
 p4 <- tm_shape(munIncPercPol) +
-  tm_fill(col = "IncXArea_log", style = 'jenks',
-          palette = brewer.pal(9, name = 'Reds'), title = 'Porcentaje Incendios por Km2') +
-  tm_borders(lwd = 0.5)
+          tm_fill(col = "IncXArea_log", style = 'jenks',
+          palette = brewer.pal(9, name = 'Reds'),
+          title = 'Porcentaje Incendios por Km2') +
+          tm_borders(lwd = 0.5)
 
 tmap_arrange(p3,p4)
 
@@ -178,52 +173,45 @@ shapiro.test(munIncPerc$IncXArea)
 qqnorm(munIncPerc$IncXArea_log)
 shapiro.test(munIncPerc$IncXArea_log)
 
+qqnorm(munIncPerc$IncXArea_tukey)
+shapiro.test(munIncPerc$IncXArea_tukey)
+
 munIncPerc %>% lm(IncXArea ~ x, .) %>% bptest()
 munIncPerc %>% lm(IncXArea ~ y, .) %>% bptest()
 munIncPerc %>% lm(IncXArea_log ~ x, .) %>% bptest()
 munIncPerc %>% lm(IncXArea_log ~ y, .) %>% bptest()
+munIncPerc %>% lm(IncXArea_tukey ~ x, .) %>% bptest()
+munIncPerc %>% lm(IncXArea_tukey ~ y, .) %>% bptest()
 
 match(attr(munInc.w.W$neighbours, "region.id"), munIncPerc$TOPONIMIA)==1:155
-
-(gmoranw <- moran.test(x = munIncPerc$'IncXArea_log', listw = munInc.w.W ))
-(gmoranb <- moran.test(x = munIncPerc$'IncXArea_log', listw = munInc.w.B))
 
 (gmoranw <- moran.test(x = munIncPerc$IncXArea_tukey, listw = munInc.w.W ))
 (gmoranb <- moran.test(x = munIncPerc$IncXArea_tukey, listw = munInc.w.B))
 
-moran.plot(x = munIncPerc$IncXArea_log, listw = munInc.w.W)
 moran.plot(x = munIncPerc$IncPercentage_tukey, listw = munInc.w.W)
-
-source('lisaclusters.R')
-lisamap(objesp = munIncPercPol,
-        var = 'IncXArea_log',
-        pesos = munInc.w.W,
-        tituloleyenda = 'Significancia\n("x-y", léase\ncomo "x"\nrodeado de "y"',
-        leyenda = T,
-        anchuratitulo = 1000,
-        tamanotitulo = 16,
-        fuentedatos = '',
-        titulomapa = paste0('Clusters LISA de Porcentaje de Incendios Forestales'))
 
 lisamap(objesp = munIncPercPol,
         var = 'IncXArea_tukey',
         pesos = munInc.w.W,
-        tituloleyenda = 'Significancia\n("x-y", léase\ncomo "x"\nrodeado de "y"',
+        tituloleyenda = 'Significancia\n(
+                        "x-y", léase\ncomo "x"\nrodeado de "y"',
         leyenda = T,
         anchuratitulo = 1000,
         tamanotitulo = 16,
         fuentedatos = '',
-        titulomapa = paste0('Clusters LISA de Porcentaje de Incendios Forestales (Tukey Trans.)'))
+        titulomapa = paste0('Clusters LISA de Porcentaje 
+                            de Incendios Forestales (Tukey Trans.)'))
 
 #correlación variables world clim
 
 # * Stack
-wclayerspath <- list.files(path = 'data/WorldClim/', pattern = '*.tif', recursive = T, full.names = T)
+wclayerspath <- list.files(path = 'data/WorldClim/', 
+                           pattern = '*.tif', recursive = T, full.names = T)
 wcstack <- stack(wclayerspath)
 # * Add month and Year field
 incendiosForestales$month <- format(as.Date(incendiosForestales$ACQ_DATE), "%m")
-incendiosForestales$year <- strtoi(format(as.Date(incendiosForestales$ACQ_DATE), "%Y"))
-hist(incendiosForestales$year)
+incendiosForestales$year <- strtoi(format(as.Date(
+                            incendiosForestales$ACQ_DATE), "%Y"))
 # * Add unique field
 incendiosForestales$unique <- 1:nrow(incendiosForestales)
 
@@ -232,8 +220,10 @@ system.time(
   foo <- sapply(1:20, function(x) {
     sp <- incendiosForestales[x,]
     m <- ifelse(nchar(sp$month)==1, paste0('0', sp$month), sp$month)
-    e <- raster::extract(wcstack[[grep(paste0(m,'$'), names(wcstack))]], sp, sp=T)
-    d <- e@data[,c('unique', 'month', grep('RD_wc2.*', colnames(e@data), value = T))]
+    e <- raster::extract(wcstack[[grep(paste0(m,'$'), names(wcstack))]],
+                                  sp, sp=T)
+    d <- e@data[,c('unique', 'month', 
+                   grep('RD_wc2.*', colnames(e@data), value = T))]
     return(d)
   }, simplify = F)
 )
@@ -254,8 +244,10 @@ system.time(
   foo <- parSapply(cl, 1:20, function(x) {
     sp <- sf::as_Spatial(incendiosForestales[x,])
     m <- ifelse(nchar(sp$month)==1, paste0('0', sp$month), sp$month)
-    e <- raster::extract(wcstack[[grep(paste0(m,'$'), names(wcstack))]], sp, sp=T)
-    d <- e@data[,c('unique', 'month', grep('RD_wc2.*', colnames(e@data), value = T))]
+    e <- raster::extract(wcstack[[grep(paste0(m,'$'), names(wcstack))]],
+                                  sp, sp=T)
+    d <- e@data[,c('unique', 'month', grep('RD_wc2.*', 
+                                           colnames(e@data), value = T))]
     return(d)
   }, simplify = F)
 )
@@ -269,7 +261,8 @@ system.time(
 1.552/20*nrow(incendiosForestales)/60
 # [1] 60.96256
 stopCluster(cl)
-bar <- inner_join(incendiosForestales, bind_rows(foo), by = c('unique', 'month'))
+bar <- inner_join(incendiosForestales, bind_rows(foo), 
+                      by = c('unique', 'month'))
 bar
 #
 
@@ -283,8 +276,10 @@ system.time(
   foo <- parSapply(cl, 1:nrow(incendiosForestales), function(x) {
     sp <- sf::as_Spatial(incendiosForestales[x,])
     m <- ifelse(nchar(sp$month)==1, paste0('0', sp$month), sp$month)
-    e <- raster::extract(wcstack[[grep(paste0(m,'$'), names(wcstack))]], sp, sp=T)
-    d <- e@data[,c('unique', 'month', grep('RD_wc2.*', colnames(e@data), value = T))]
+    e <- raster::extract(wcstack[[grep(paste0(m,'$'), names(wcstack))]],
+                                  sp, sp=T)
+    d <- e@data[,c('unique', 'month', grep('RD_wc2.*', colnames(e@data),
+                                           value = T))]
     return(d)
   }, simplify = F)
 )
@@ -294,7 +289,8 @@ system.time(
 
 
 stopCluster(cl)
-bar <- inner_join(incendiosForestales, bind_rows(foo), by = c('unique', 'month'))
+bar <- inner_join(incendiosForestales, bind_rows(foo), 
+                  by = c('unique', 'month'))
 bar
 #
 
@@ -303,7 +299,7 @@ puntos_calor_fuegos_y_worldclim_viento_temp_radiacion
 
 ########### EASYMODE
 #extracción de datos raster
-st_write(incendiosForestales, "data/Incendios/incendiosForestales.shp")
+#st_write(incendiosForestales, "data/Incendios/incendiosForestales.shp")
 
 tablaWorldClim <- read.table("data/Incendios/Test2.csv", 
                  header = TRUE,
@@ -312,18 +308,20 @@ tablaWorldClim <- read.table("data/Incendios/Test2.csv",
 ###########END EASYMODE
 
 
-incForWorldClim <- left_join(incendiosForestales, select(tablaWorldClim, c(unique,month,wind,temp,srad,prec)), by = 'unique')
+incForWorldClim <- left_join(incendiosForestales, 
+                             select(tablaWorldClim,
+                                    c(unique,month,wind,temp,srad,prec)),
+                             by = 'unique')
 
 #quitar valores 0
-incForestWorldClim <- incForWorldClim[incForWorldClim$srad != 0 & incForWorldClim$prec != 0, ] 
+incForestWorldClim <- incForWorldClim[incForWorldClim$srad != 0 
+                                      & incForWorldClim$prec != 0, ] 
 
 #Segmentacion por año
-incForestWC2017 <- incForWorldClim[incForWorldClim$year == 2017, ] 
-incForWC2017 <- incForestWC2017[incForestWC2018$srad != 0 & incForestWC2018$prec != 0, ] 
-incForestWC2016 <- incForWorldClim[incForWorldClim$year == 2016, ] 
-incForWC2016 <- incForestWC2016[incForestWC2018$srad != 0 & incForestWC2018$prec != 0, ] 
+hist(incendiosForestales$year)
 incForestWC2018 <- incForWorldClim[incForWorldClim$year == 2018, ] 
-incForWC2018 <- incForestWC2018[incForestWC2018$srad != 0 & incForestWC2018$prec != 0, ] 
+incForWC2018 <- incForestWC2018[incForestWC2018$srad != 0 
+                                & incForestWC2018$prec != 0, ] 
 
 
 #Año 2018
@@ -331,6 +329,9 @@ incForWC2018 <- incForestWC2018[incForestWC2018$srad != 0 & incForestWC2018$prec
 #EDA
 nrow(incForWC2018)
 summary(incForWC2018$prec)
+summary(incForWC2018$wind)
+summary(incForWC2018$srad)
+summary(incForWC2018$temp)
 
 
 #Temperatura
@@ -341,7 +342,8 @@ ggplot() +
   geom_sf(data = mun4326, fill = 'white') +
   geom_sf(data = incForWC2018, aes(col = temp), size = 3) +
   scale_colour_gradient(low="#f7dede", high="#ff0011") +
-  geom_sf_text(data = incForWC2018, aes(label=MUN), check_overlap = T, size = 0.5) +
+  geom_sf_text(data = incForWC2018, aes(label=MUN), 
+               check_overlap = T, size = 0.5) +
   theme_bw()
 
 #Radiacion Solar
@@ -351,7 +353,8 @@ ggplot() +
   geom_sf(data = mun4326, fill = 'white') +
   geom_sf(data = incForWC2018, aes(col = srad), size = 3) +
   scale_colour_gradient(low="#f7dede", high="#ff0011") +
-  geom_sf_text(data = incForWC2018, aes(label=MUN), check_overlap = T, size = 0.5) +
+  geom_sf_text(data = incForWC2018, aes(label=MUN),
+               check_overlap = T, size = 0.5) +
   theme_bw()
 
 #Viento
@@ -361,7 +364,8 @@ ggplot() +
   geom_sf(data = mun4326, fill = 'white') +
   geom_sf(data = incForWC2018, aes(col = wind), size = 3) +
   scale_colour_gradient(low="#deebf7", high="#3182bd") +
-  geom_sf_text(data = incForWC2018, aes(label=MUN), check_overlap = T, size = 0.5) +
+  geom_sf_text(data = incForWC2018, aes(label=MUN), 
+               check_overlap = T, size = 0.5) +
   theme_bw()
 
 #Precipitacion
@@ -371,36 +375,36 @@ ggplot() +
   geom_sf(data = mun4326, fill = 'white') +
   geom_sf(data = incForWC2018, aes(col = prec), size = 3) +
   scale_colour_gradient(low="#deebf7", high="#3182bd") +
-  geom_sf_text(data = incForWC2018, aes(label=MUN), check_overlap = T, size = 0.5) +
+  geom_sf_text(data = incForWC2018, aes(label=MUN),
+               check_overlap = T, size = 0.5) +
   theme_bw()
-
 
 #variograma 
 #Radiacion Solar
 vsrad18 <- variogram(srad~1, incForWC2018)
-plot(vsrad18, plot.numbers = T)
 vsrad18_m1 <- fit.variogram(vsrad18, vgm(model = "Exp", range = 5))
+plot(vsrad18, plot.numbers = T)
 vsrad18_m1
 plot(vsrad18, vsrad18_m1, plot.numbers = T)
 
 #Temperatura
 vtemp18 <- variogram(temp~1, incForWC2018)
-plot(vtemp18, plot.numbers = T)
 vtemp18_m1 <- fit.variogram(vtemp18, vgm(model = "Exp", range = 50))
+plot(vtemp18, plot.numbers = T)
 vtemp18_m1
 plot(vtemp18, vtemp18_m1, plot.numbers = T)
 attr(vtemp18_m1, 'SSErr')
 
 #Viento
 vwind18 <- variogram(wind~1, incForWC2018)
-plot(vwind18, plot.numbers = T)
 vwind18_m1 <- fit.variogram(vwind18, vgm(model = "Lin", range = 50))
+vwind18_m2 <- fit.variogram(vwind18, vgm(model = "Exp", range = 50))
+vwind18_m3 <- fit.variogram(vwind18, vgm(model = "Pow", range = 1))
+plot(vwind18, plot.numbers = T)
 vwind18_m1
 plot(vwind18, vwind18_m1, plot.numbers = T)
-vwind18_m2 <- fit.variogram(vwind18, vgm(model = "Exp", range = 50))
 vwind18_m2
 plot(vwind18, vwind18_m2, plot.numbers = T)
-vwind18_m3 <- fit.variogram(vwind18, vgm(model = "Pow", range = 1))
 vwind18_m3
 plot(vwind18, vwind18_m3, plot.numbers = T)
 
@@ -410,12 +414,11 @@ attr(vwind18_m3, 'SSErr') #***
 
 #Precipitacion
 vprec18 <- variogram(prec~1, incForWC2018)
-plot(vprec18, plot.numbers = T)
 vprec18_m1 <- fit.variogram(vprec18, vgm(model = "Pen", range = 5000))
+plot(vprec18, plot.numbers = T)
 vprec18_m1
 plot(vprec18, vprec18_m1, plot.numbers = T)
 
-var1 <- fit.variogram()
 
 ## Loading required package: abind
 grd <- st_bbox(mun) %>%
@@ -428,7 +431,8 @@ plot(grd4326)
 incForWC2018.32619 <- st_transform(incForWC2018, crs = 32619)
 
 #krigging
-k <- krige(formula = wind~1, locations = incForWC2018.32619, newdata = grd, model = vwind18_m3)
+k <- krige(formula = wind~1, locations = incForWC2018.32619, 
+           newdata = grd, model = vwind18_m3)
 plot(k)
 
 
@@ -437,7 +441,7 @@ ggplot() +
   scale_fill_gradient(low="#deebf7", high="#3182bd") +
   geom_sf(data = st_cast(mun, "MULTILINESTRING")) +
   geom_sf(data = incForWC2018) +
-  geom_sf_text(data = mun, aes(label=TOPONIMIA), check_overlap = T, size = 0.8) +
+  geom_sf_text(data = mun, aes(label=TOPONIMIA), check_overlap = T, size = 0.8)+
   theme_bw()
 
 
@@ -457,7 +461,8 @@ ggplot() +
   geom_sf(data = mun4326, fill = 'white') +
   geom_sf(data = munIncPercGeom, aes(col = NumIncendios), size = 6) + 
   scale_colour_gradientn(colours = rev(brewer.pal(9, name = 'RdBu'))) +
-  geom_sf_text(data = munIncPercGeom, aes(label=TOPONIMIA), check_overlap = T, size = 2) +
+  geom_sf_text(data = munIncPercGeom, aes(label=TOPONIMIA), 
+               check_overlap = T, size = 2) +
   theme_bw()
 
 
@@ -495,7 +500,8 @@ vt_m3 <- fit.variogram(vt, vgm(model = "Sph", range = 50))
 vt_m3
 plot(vt, vt_m3, plot.numbers = T)
 
-k_u <- krige(NumIncendios ~ ele , munIncPercGeom, st_rasterize(st_as_sf(grdcovars)), vt_m)
+k_u <- krige(NumIncendios ~ ele , munIncPercGeom, 
+             st_rasterize(st_as_sf(grdcovars)), vt_m)
 
 
 ggplot() +
@@ -503,5 +509,6 @@ ggplot() +
   scale_fill_gradientn(colours = rev(brewer.pal(9, name = 'RdBu'))) +
   geom_sf(data = st_cast(mun4326, "MULTILINESTRING")) +
   geom_sf(data = munIncPercGeom) +
-  geom_sf_text(data = mun4326, aes(label=TOPONIMIA), check_overlap = T, size = 1) +
+  geom_sf_text(data = mun4326, aes(label=TOPONIMIA), check_overlap = T, 
+               size = 1) +
   theme_bw()
