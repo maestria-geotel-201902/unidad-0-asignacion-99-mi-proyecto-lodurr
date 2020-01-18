@@ -766,7 +766,7 @@ Por otro lado, al realizar el Kriging universal teniendo en cuenta la relación 
 
 # Discusión o Conclusiones
 
-Es recomendable realziar un estudio teniendo en cuenta los factores sociales puesto que estos pueden ser un factor influyente en la propagación de incendios para la República Dominicana
+Es recomendable realizar un estudio teniendo en cuenta los factores sociales puesto que estos pueden ser un factor influyente en la propagación de incendios para la República Dominicana
 
 
 # Información de soporte
@@ -774,7 +774,7 @@ Es recomendable realziar un estudio teniendo en cuenta los factores sociales pue
 Para el desarrollo de este trabajo se usó la siguiente información
 
 - Incendios forestales @firmsdw (Información de los ultimos 10 años para el pais)
-- Variables climaticas @WorldClim (2.5m)
+- Variables climaticas @worldclim  (2.5m)
     - Temperatura Promedio (Cº)
     - Precipitacion (mm)
     - Radiación Solar (Kj m-2 day-1)
