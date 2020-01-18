@@ -1,0 +1,216 @@
+\documentclass[11pt,]{article}
+\usepackage[left=1in,top=1in,right=1in,bottom=1in]{geometry}
+\newcommand*{\authorfont}{\fontfamily{phv}\selectfont}
+\usepackage[]{mathpazo}
+\usepackage{url}
+
+
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+
+
+
+\usepackage{abstract}
+\renewcommand{\abstractname}{}    % clear the title
+\renewcommand{\absnamepos}{empty} % originally center
+
+\renewenvironment{abstract}
+ {{%
+    \setlength{\leftmargin}{0mm}
+    \setlength{\rightmargin}{\leftmargin}%
+  }%
+  \relax}
+ {\endlist}
+
+\makeatletter
+\def\@maketitle{%
+  \newpage
+%  \null
+%  \vskip 2em%
+%  \begin{center}%
+  \let \footnote \thanks
+    {\fontsize{18}{20}\selectfont\raggedright  \setlength{\parindent}{0pt} \@title \par}%
+}
+%\fi
+\makeatother
+
+
+
+
+\setcounter{secnumdepth}{3}
+
+
+
+\title{Distribución espacial de los puntos de calor - Hot Spots para los
+incendios forestales en la República Dominicana y predicción de las
+zonas mas vulnerables usando el metodo de Kriging universal  }
+
+
+
+\author{\Large Diego Cordero\vspace{0.05in} \newline\normalsize\emph{Estudiante de Maestría en Teledetección y Ciencias de la Información
+Geográfica, Universidad Autónoma de Santo Domingo (UASD)}  }
+
+
+\date{}
+
+\usepackage{titlesec}
+
+\titleformat*{\section}{\normalsize\bfseries}
+\titleformat*{\subsection}{\normalsize\itshape}
+\titleformat*{\subsubsection}{\normalsize\itshape}
+\titleformat*{\paragraph}{\normalsize\itshape}
+\titleformat*{\subparagraph}{\normalsize\itshape}
+
+\titlespacing{\section}
+{0pt}{36pt}{0pt}
+\titlespacing{\subsection}
+{0pt}{36pt}{0pt}
+\titlespacing{\subsubsection}
+{0pt}{36pt}{0pt}
+
+
+
+
+
+\newtheorem{hypothesis}{Hypothesis}
+\usepackage{setspace}
+
+\makeatletter
+\@ifpackageloaded{hyperref}{}{%
+\ifxetex
+  \PassOptionsToPackage{hyphens}{url}\usepackage[setpagesize=false, % page size defined by xetex
+              unicode=false, % unicode breaks when used with xetex
+              xetex]{hyperref}
+\else
+  \PassOptionsToPackage{hyphens}{url}\usepackage[unicode=true]{hyperref}
+\fi
+}
+
+\@ifpackageloaded{color}{
+    \PassOptionsToPackage{usenames,dvipsnames}{color}
+}{%
+    \usepackage[usenames,dvipsnames]{color}
+}
+\makeatother
+\hypersetup{breaklinks=true,
+            bookmarks=true,
+            pdfauthor={Diego Cordero (Estudiante de Maestría en Teledetección y Ciencias de la Información
+Geográfica, Universidad Autónoma de Santo Domingo (UASD))},
+             pdfkeywords = {r, rstudio, fire forest, incendio forestal, kriging, LISA cluster},  
+            pdftitle={Distribución espacial de los puntos de calor - Hot Spots para los
+incendios forestales en la República Dominicana y predicción de las
+zonas mas vulnerables usando el metodo de Kriging universal},
+            colorlinks=true,
+            citecolor=blue,
+            urlcolor=blue,
+            linkcolor=magenta,
+            pdfborder={0 0 0}}
+\urlstyle{same}  % don't use monospace font for urls
+
+% set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+
+\usepackage{pdflscape} \newcommand{\blandscape}{\begin{landscape}}
+\newcommand{\elandscape}{\end{landscape}}
+
+
+% add tightlist ----------
+\providecommand{\tightlist}{%
+\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+\begin{document}
+	
+% \pagenumbering{arabic}% resets `page` counter to 1 
+%
+% \maketitle
+
+{% \usefont{T1}{pnc}{m}{n}
+\setlength{\parindent}{0pt}
+\thispagestyle{plain}
+{\fontsize{18}{20}\selectfont\raggedright 
+\maketitle  % title \par  
+
+}
+
+{
+   \vskip 13.5pt\relax \normalsize\fontsize{11}{12} 
+\textbf{\authorfont Diego Cordero} \hskip 15pt \emph{\small Estudiante de Maestría en Teledetección y Ciencias de la Información
+Geográfica, Universidad Autónoma de Santo Domingo (UASD)}   
+
+}
+
+}
+
+
+
+
+
+
+
+
+\begin{abstract}
+
+    \hbox{\vrule height .2pt width 39.14pc}
+
+    \vskip 8.5pt % \small 
+
+\noindent Esta investigación se basa en información geográfica de libre acceso
+encontrada en la web y pretende realizar un análisis geoespacial que
+permita conocer cuál es la distribución espacial de los puntos de calor
+- Hot Spots para los incendios forestales en la República Dominicana.
+Para lo cual se descargó la información correspondiente para el periodo
+2009-2019 de la pagina de NASA-FIRMS (2020). El resultado final esperado
+que se busca mediante el desarrollo de un script bajo el software R y la
+herramienta RStudio es un Cluster LISA que indique la relación espacial
+de los municipios con los incendios y una predicción de las zonas mas
+vulnerables usando el metodo de Kriging universal teniendo como base la
+elevación de un modelo digital de elevación (DEM).
+
+
+\vskip 8.5pt \noindent \emph{Keywords}: r, rstudio, fire forest, incendio forestal, kriging, LISA cluster \par
+
+    \hbox{\vrule height .2pt width 39.14pc}
+
+
+
+\end{abstract}
+
+
+\vskip 6.5pt
+
+
+\noindent  \section{Introducción}\label{introducciuxf3n}
+
+Principalmente en la descargada desde NASA (2020)
+
+\section{Metodología}\label{metodologuxeda}
+
+\subsection{Librerias Necesarias y adición de
+data}\label{librerias-necesarias-y-adiciuxf3n-de-data}
+
+Inicialmente se usarán las siguientes librerías y el archivo para el
+desarrollo de los LISA cluster realizado por Martínez Batlle (2019) para
+el desarrollo del script para la investigación
+
+\hypertarget{refs}{}
+\hypertarget{ref-profesorLisa}{}
+Martínez Batlle, J. R. (2019). \emph{Script adición lisa cluster}.
+
+\hypertarget{ref-firmsdw}{}
+NASA. (2020). \emph{Pagina de descargas -- fire information for resource
+management system (firms)}. Retrieved from
+\url{https://firms.modaps.eosdis.nasa.gov/download/create.php}
+
+\hypertarget{ref-firmsweb}{}
+NASA-FIRMS. (2020). \emph{Fire information for resource management
+system (firms)}. Retrieved from
+\url{https://firms.modaps.eosdis.nasa.gov/}
+
+
+
+
+\newpage
+\singlespacing 
+\end{document}
